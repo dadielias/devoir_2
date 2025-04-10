@@ -1,4 +1,4 @@
-./build
-deformation
-./gmsh-sdk
-makefile
+build/
+deformation.exe
+gmsh-sdk/
+Makefile
