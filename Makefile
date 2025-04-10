@@ -1,6 +1,6 @@
 # Nom du programme
 PROG := deformation
-
+rehtyn('yn')
 SRC_DIR := src
 INC_DIR := include
 MODEL_DIR := models
