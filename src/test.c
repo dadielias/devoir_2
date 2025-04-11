@@ -2,79 +2,165 @@
 #include <stdlib.h>
 #include <math.h>
 #include "devoir_2.h"
+#include "time.h"
 
-// Insérer ici ta fonction CG(...)
 
-void denseSolve3x3(const double *A_dense, const double *b, double *x) {
-    // Résolution directe de A x = b avec 3x3 inversée à la main (juste pour test)
-    double a = A_dense[0], b1 = A_dense[1], c = A_dense[2];
-    double d = A_dense[3], e = A_dense[4], f = A_dense[5];
-    double g = A_dense[6], h = A_dense[7], i = A_dense[8];
+void generate_random_sdp_matrix(double *A, int n) {
+    for (int i = 0; i < n * n; i++)
+        A[i] = ((double)rand() / RAND_MAX);
 
-    double det = a*(e*i - f*h) - b1*(d*i - f*g) + c*(d*h - e*g);
-
-    if (fabs(det) < 1e-12) {
-        printf("Matrix is singular.\n");
-        return;
-    }
-
-    // Calcul de l'inverse de A à la main
-    double inv[9];
-    inv[0] =  (e*i - f*h) / det;
-    inv[1] = -(b1*i - c*h) / det;
-    inv[2] =  (b1*f - c*e) / det;
-    inv[3] = -(d*i - f*g) / det;
-    inv[4] =  (a*i - c*g) / det;
-    inv[5] = -(a*f - c*d) / det;
-    inv[6] =  (d*h - e*g) / det;
-    inv[7] = -(a*h - b1*g) / det;
-    inv[8] =  (a*e - b1*d) / det;
-
-    for (int j = 0; j < 3; j++) {
-        x[j] = 0;
-        for (int k = 0; k < 3; k++) {
-            x[j] += inv[3*j + k] * b[k];
+    for (int i = 0; i < n; i++)
+        for (int j = i; j < n; j++) {
+            double sum = 0;
+            for (int k = 0; k < n; k++)
+                sum += A[i * n + k] * A[j * n + k];
+            A[i * n + j] = sum;
+            A[j * n + i] = sum;
         }
-    }
+
+    for (int i = 0; i < n; i++)
+        A[i * n + i] += n;
 }
 
-void test_CG_vs_direct() {
-    // Matrice A (CSR) : 3x3
-    int n = 3;
-    int nnz = 7;
-    int rows_idx[] = {0, 2, 5, 7};
-    int cols[] =     {0, 1, 0, 1, 2, 1, 2};
-    double A[] =     {4.0, 1.0, 1.0, 3.0, 1.0, 1.0, 2.0};
+void dense_to_csr(const double *A, int n, int *rows, int *cols, double *val, int *nnz_out) {
+    int count = 0;
+    rows[0] = 0;
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            if (fabs(A[i * n + j]) > 1e-12) {
+                val[count] = A[i * n + j];
+                cols[count] = j;
+                count++;
+            }
+        }
+        rows[i + 1] = count;
+    }
+    *nnz_out = count;
+}
 
-    double b[] = {1.0, 2.0, 0.0};
-    double x_cg[3];
-    double x_ref[3];
 
-    int iters = CG(n, nnz, rows_idx, cols, A, b, x_cg, 1e-8);
+int cholesky_decomposition(double *A, int n) {
+    int i, j, k;
+    for (i = 0; i < n; i++) {
+        if (A[i * (i + 1) / 2 + i] < 0) {
+            fprintf(stderr, "Error: matrix is not positive definite\n");
+            return -1;
+        }
+        A[i * (i + 1) / 2 + i] = sqrt(A[i * (i + 1) / 2 + i]);
+        for (j = i + 1; j < n; j++) {
+            A[j * (j + 1) / 2 + i] /= A[i * (i + 1) / 2 + i];
+        }
+        for (k = i + 1; k < n; k++) {
+            for (j = k; j < n; j++) {
+                A[j * (j + 1) / 2 + k] -= A[j * (j + 1) / 2 + i] * A[k * (k + 1) / 2 + i];
+            }
+        }
+    }
+    return 0;
+}
 
-    // Version dense pour comparaison
-    double A_dense[] = {
-        4.0, 1.0, 0.0,
-        1.0, 3.0, 1.0,
-        0.0, 1.0, 2.0
-    };
-    denseSolve3x3(A_dense, b, x_ref);
+int solve_linear_system(double *A, double *b, int n) {
 
-    // Affichage
-    printf("Résultat CG en %d itérations:\n", iters);
-    for (int i = 0; i < 3; i++) {
-        printf("x_cg[%d] = %.8f\n", i, x_cg[i]);
+    if (cholesky_decomposition(A, n) != 0) {
+        return -1;
+    }
+    
+    double *x = (double *)malloc(n * sizeof(double));
+    if (x == NULL) {
+        fprintf(stderr, "Error: cannot allocate memory for x\n");
+        return -1;
     }
 
-    printf("\nSolution exacte (inversion) :\n");
-    for (int i = 0; i < 3; i++) {
-        printf("x_ref[%d] = %.8f\n", i, x_ref[i]);
+    int i, k;
+    double sum;
+
+    for (i = 0; i < n; i++) {
+        sum = b[i];
+        for (k = 0; k < i; k++) {
+            sum -= A[i * (i + 1) / 2 + k] * x[k];
+        }
+        x[i] = sum / A[i * (i + 1) / 2 + i];
     }
 
-    // Erreur
-    double err = 0.0;
-    for (int i = 0; i < 3; i++) {
-        err += (x_cg[i] - x_ref[i]) * (x_cg[i] - x_ref[i]);
+    for (i = n - 1; i >= 0; i--) {
+        sum = x[i];
+        for (k = i + 1; k < n; k++) {
+            sum -= A[k * (k + 1) / 2 + i] * x[k];
+        }
+        x[i] = sum / A[i * (i + 1) / 2 + i];
     }
-    printf("\nNorme de l'erreur CG : %.8e\n", sqrt(err));
+
+    for (i = 0; i < n; i++) {
+        b[i] = x[i];
+    }
+
+    for (int i = 1; i <= n; i++) {
+        if (isinf(b[i]) || isnan(b[i])) {
+            fprintf(stderr, "Error: no solution possible\n");
+            return -1;
+        }
+    }
+
+    free(x);
+    return 0;
+}
+
+void test_cg(int n, double tol)
+{
+    srand(time(NULL));
+
+    // Allocation des structures
+    double *A_dense = malloc(n * n * sizeof(double));
+    double *A_chol  = malloc((n * (n + 1)) / 2 * sizeof(double));
+    double *b       = malloc(n * sizeof(double));
+    double *b_ref   = malloc(n * sizeof(double));
+    double *x_cg    = calloc(n, sizeof(double));
+
+    // 1. Générer A SDP et b
+    generate_random_sdp_matrix(A_dense, n);
+    for (int i = 0; i < n; i++) {
+        b[i] = ((double)rand()) / RAND_MAX;
+        b_ref[i] = b[i];
+    }
+
+    // 2. Copier la matrice au format compact (triangulaire inférieure stockée en ligne)
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j <= i; j++)
+            A_chol[i * (i + 1) / 2 + j] = A_dense[i * n + j];
+
+    // 3. Résolution directe avec Cholesky (écrase b_ref avec la solution)
+    if (solve_linear_system(A_chol, b_ref, n) != 0) {
+        printf("Échec de la résolution directe\n");
+        goto cleanup;
+    }
+
+    // 4. Conversion de la matrice vers CSR
+    int *rows = malloc((n + 1) * sizeof(int));
+    int *cols = malloc(n * n * sizeof(int));       
+    double *val = malloc(n * n * sizeof(double));   
+    int nnz = 0;
+
+    dense_to_csr(A_dense, n, rows, cols, val, &nnz);
+
+    int iterations = CG(n, nnz, rows, cols, val, b, x_cg, tol);
+
+    double err = 0;
+    for (int i = 0; i < n; i++) {
+        double diff = x_cg[i] - b_ref[i];
+        err += diff * diff;
+    }
+    err = sqrt(err);
+
+    printf("✅ Résolu en %d itérations\n", iterations);
+    printf("🔍 Norme de l'erreur (CG vs Cholesky) : %.8e\n", err);
+
+cleanup:
+    free(A_dense);
+    free(A_chol);
+    free(b);
+    free(b_ref);
+    free(x_cg);
+    free(rows);
+    free(cols);
+    free(val);
 }

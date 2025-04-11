@@ -110,6 +110,8 @@ int main(int argc, char *argv[]) {
     free(sol);
     free(rhs);
     free_FE_Model(model);
-    test_CG_vs_direct();
+
+    test_cg(5, 1e-6);
+
     return 0;
 }
