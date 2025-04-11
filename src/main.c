@@ -1,4 +1,5 @@
 #include "devoir_2.h"
+#include "test.h"
 #include "utils.h"
 #include "model.h"
 #include "utils_gmsh.h"
@@ -54,6 +55,8 @@ void display_info(FE_Model *model, int step, struct timespec ts[4]) {
     }
 }
 
+void test_CG_vs_direct();
+
 int main(int argc, char *argv[]) {
 
     int ierr;
@@ -107,5 +110,6 @@ int main(int argc, char *argv[]) {
     free(sol);
     free(rhs);
     free_FE_Model(model);
+    test_CG_vs_direct();
     return 0;
 }
