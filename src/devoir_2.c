@@ -182,6 +182,20 @@ int CG(
     return iter + 1;
 }
 
+/**
+ * @brief Calcule la factorisation incomplète LU = LDL* d'une matrice A en format CSR.
+ *
+ * @param n Taille de la matrice (nombre de lignes/colonnes).
+ * @param nnz Nombre de valeurs non nulles dans la matrice A.
+ * @param rows_idx Tableau d'index des lignes (format CSR).
+ * @param cols Tableau d'index des colonnes (format CSR).
+ * @param A Tableau des valeurs non nulles de la matrice A (format CSR).
+ * @param L Tableau de sortie de même taille que A, contenant la factorisation incomplète :
+ *           - Si csr_sym() renvoie 0 : L contient L dans sa partie strictement inférieure
+ *             et U dans sa partie supérieure.
+ *           - Si csr_sym() renvoie 1 : L contient L dans sa partie strictement inférieure
+ *             et D dans sa diagonale.
+ */
 void ILU(
     int n,
     int nnz,
@@ -189,7 +203,56 @@ void ILU(
     const int *cols,
     const double *A,
     double *L
-) {}
+) {
+    // On travaille avec A symétrique -> ILU simmilaire à IC (en modifiant ligne avec la racine du pivot)
+    
+    // Copier A dans L en format symétrique
+    for (int i = 0; i < nnz; i++) {
+        L[i] = A[i];
+    }
+    // H = A 
+    double Akk, Lik, Lkj;
+    int idx, colj;
+    for (int k = 0; k < n; k++){
+        Akk = 0.0;
+    
+        // Cherche Akk = L[k][k]
+        for (int idx = rows_idx[k]; idx < rows_idx[k + 1]; ++idx) {
+            if (cols[idx] == k) {
+                Akk = L[idx];
+                break;
+            }
+        }
+        // Si Akk == 0, on ne peut pas continuer
+        if (Akk < 1e-14) continue;
+        
+        // On divise la ligne k par Akk
+        for (int j = rows_idx[k]; j < rows_idx[k + 1]; ++j) {
+            L[j] /= Akk;
+
+            colj = cols[j];
+
+            for (int i = rows_idx[k]; i < rows_idx[k + 1]; ++i) {
+                // On cherche la colonne de L[i][k] et L[k][j]
+                for (idx = rows_idx[i]; idx < rows_idx[i + 1]; ++idx) {
+                    if (cols[i] == k) {
+                        Lik = L[i];
+                        break;
+                    }
+                }
+                for (idx = rows_idx[colj]; idx < rows_idx[colj + 1]; ++idx) {
+                    if (cols[i] == colj) {
+                        Lkj = L[i];
+                        break;
+                    }
+                }
+                // On met à jour L[i][j] = L[i][j] - L[i][k] * L[k][j]
+                L[i] -= Lik * Lkj;
+            }
+        }
+    }
+}
+
 
 int PCG(
     int n,
