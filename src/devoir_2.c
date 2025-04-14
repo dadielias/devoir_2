@@ -52,7 +52,7 @@ static inline void residual(int n, const int *rows_idx, const int *cols, const d
  */
 static inline double dot(int n, const double *x, const double *y)
 {
-    double s = 0;
+    double s = 0.0;
     for (int i = 0; i < n; i++)
     {
         s += x[i] * y[i];
@@ -85,6 +85,17 @@ void Matvec(
     double *Av
 ) {}
 
+/**
+ * Résout le système linéaire Lx = b où L est une matrice résultant d'une factorisation incomplète.
+ *
+ * @param L Tableau de sortie de même taille que A, contenant la factorisation incomplète :
+ *           - Si csr_sym() renvoie 0 : L contient L dans sa partie strictement inférieure
+ *             et U dans sa partie supérieure.
+ *           - Si csr_sym() renvoie 1 : L contient L dans sa partie strictement inférieure
+ *             et D dans sa diagonale.
+ * @param b Vecteur second membre du système linéaire.
+ * @param x Vecteur solution du système linéaire, calculé en sortie.
+ */
 void solve(
     int n,
     int nnz,
@@ -93,7 +104,29 @@ void solve(
     const double *L,
     const double *b,
     double *x
-) {}
+) {
+    // Résoudre Lz = b
+    for (int i = 0; i < n; i++) {
+        double sum = b[i];
+        for (int j = rows_idx[i]; j < rows_idx[i + 1]; j++) {
+            if (cols[j] < i) {
+                sum -= L[j] * x[cols[j]];
+            }
+        }
+        x[i] = sum;
+    }
+
+    // Résoudre Ux = z
+    for (int i = n - 1; i >= 0; i--) {
+        double sum = x[i];
+        for (int j = rows_idx[i]; j < rows_idx[i + 1]; j++) {
+            if (cols[j] > i) {
+                sum -= L[j] * x[cols[j]];
+            }
+        }
+        x[i] = sum / L[rows_idx[i + 1] - 1];
+    }
+}
 
 int CG(
     int n,
@@ -111,9 +144,6 @@ int CG(
 
     for (int i = 0; i < n; i++) {
         x[i] = 0.0;
-    }
-
-    for (int i = 0; i < n; i++) {
         r[i] = b[i];  // car x = 0 initialement
         p[i] = r[i];
     }
@@ -123,43 +153,30 @@ int CG(
     double r_norm2 = 0.0, r_norm2_new = 0.0, r0_norm2 = 0.0;
 
     // Norme initiale : r0^T r0
-    for (int i = 0; i < n; i++) {
-        r0_norm2 += r[i] * r[i];
-    }
+    r0_norm2 = dot(n, r, r);
     r_norm2 = r0_norm2;
 
     for (iter = 0; iter < max_iter; iter++) {
+        
         // Ap = A * p
-        for (int i = 0; i < n; i++) {
-            Ap[i] = 0.0;
-            for (int j = rows_idx[i]; j < rows_idx[i + 1]; j++) {
-                Ap[i] += A[j] * p[cols[j]];
-            }
-        }
+        spmv(n, rows_idx, cols, A, p, Ap);
 
-        double alpha_num = r_norm2;
-        double alpha_den = 0.0;
-        for (int i = 0; i < n; i++) {
-            alpha_den += p[i] * Ap[i];
-        }
+        // Calcul alpha : alpha = r^T r / (p^T Ap)
+        double alpha_num = r_norm2;  // PK PAS d^T r --> dot(n, r, d);
+        double alpha_den = dot(n, p, Ap);
 
         double alpha = alpha_num / alpha_den;
 
         // x = x + alpha * p
-        for (int i = 0; i < n; i++) {
-            x[i] += alpha * p[i];
-        }
+        axpy(n, x, p, alpha);
+
 
         // r = r - alpha * Ap
-        for (int i = 0; i < n; i++) {
-            r[i] -= alpha * Ap[i];
-        }
+        axpy(n, r, Ap, -alpha);
+        //residual(n, rows_idx, cols, A, x, b, r); -> la mm a priori
 
         // r^T r
-        r_norm2_new = 0.0;
-        for (int i = 0; i < n; i++) {
-            r_norm2_new += r[i] * r[i];
-        }
+        r_norm2_new = dot(n, r, r);
 
         // Critère d'arrêt relatif
         if (sqrt(r_norm2_new / r0_norm2) < eps) {
@@ -243,17 +260,21 @@ void ILU(
         for (int j = k + 1; j < n; j++) {
             // L[k][j] = L[k][j] / Akk;
             idx = get_index_csr(j, k, rows_idx, cols);
+            if (idx == -1) continue;
             L[idx] /= Akk;
 
             idx = get_index_csr(k, j, rows_idx, cols);
+            if (idx == -1) continue;
             Lkj = L[idx];
 
             for (int i = k + 1; i < n; i++) {
                 idx = get_index_csr(i, k, rows_idx, cols);
+                if (idx == -1) continue;
                 Lik = L[idx];
 
                 // On met à jour L[i][j] = L[i][j] - L[i][k] * L[k][j]
                 idx = get_index_csr(i, j, rows_idx, cols);
+                if (idx == -1) continue;
                 L[idx] -= Lik * Lkj;
             }
         }
@@ -273,7 +294,79 @@ int PCG(
     double *x,
     double eps
 ) {
-    return 0;
+    double *r = malloc(n * sizeof(double));
+    double *p = malloc(n * sizeof(double));
+    double *z = malloc(n * sizeof(double));
+    double *Ap = malloc(n * sizeof(double));
+    double *M = malloc(nnz * sizeof(double));
+
+    // Préconditionneur
+    // M = LU  = A = L D L^T
+    ILU(n, nnz, rows_idx, cols, A, M);
+    
+    // M z = r
+    solve(n, nnz, rows_idx, cols, A, b, z);
+
+    for (int i = 0; i < n; i++) {
+        x[i] = 0.0;
+        r[i] = b[i];  // car x = 0 initialement
+        p[i] = z[i];
+    }
+
+    int max_iter = 10000;
+    int iter;
+    double r_norm2 = 0.0, r_norm2_new = 0.0, r0_norm2 = 0.0, zpr_old = 0.0;
+
+    // Norme initiale : r0^T r0
+    r0_norm2 = dot(n, r, r);
+    r_norm2 = r0_norm2;
+
+    for (iter = 0; iter < max_iter; iter++) {
+        
+        // Ap = A * p
+        spmv(n, rows_idx, cols, A, p, Ap);
+
+        // Calcul alpha : alpha = r^T z / (p^T Ap)
+        double alpha_num = dot(n, r, z);
+        double alpha_den = dot(n, p, Ap);
+
+        double alpha = alpha_num / alpha_den;
+
+        // x = x + alpha * p
+        axpy(n, x, p, alpha);
+
+
+        // r = r - alpha * Ap
+        axpy(n, r, Ap, -alpha);
+        //residual(n, rows_idx, cols, A, x, b, r); -> la mm a priori
+
+        // r^T r
+        r_norm2_new = dot(n, r, r);
+
+        // Critère d'arrêt relatif
+        if (sqrt(r_norm2_new / r0_norm2) < eps) {
+            break;
+        }
+
+        zpr_old = dot(n, z, z);
+
+        // M z = r
+        solve(n, nnz, rows_idx, cols, A, r, z);
+
+        double beta = dot(n, r, z) / zpr_old;
+
+        for (int i = 0; i < n; i++) {
+            p[i] = z[i] + beta * p[i];
+        }
+
+        r_norm2 = r_norm2_new;
+    }
+
+    free(r);
+    free(p);
+    free(Ap);
+    free(z);
+    return iter + 1;
 }
 
 int csr_sym() {
