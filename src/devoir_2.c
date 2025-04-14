@@ -305,7 +305,7 @@ int PCG(
     ILU(n, nnz, rows_idx, cols, A, M);
     
     // M z = r
-    solve(n, nnz, rows_idx, cols, A, b, z);
+    solve(n, nnz, rows_idx, cols, M, b, z);
 
     for (int i = 0; i < n; i++) {
         x[i] = 0.0;
@@ -351,7 +351,7 @@ int PCG(
         zpr_old = dot(n, z, z);
 
         // M z = r
-        solve(n, nnz, rows_idx, cols, A, r, z);
+        solve(n, nnz, rows_idx, cols, M, r, z);
 
         double beta = dot(n, r, z) / zpr_old;
 
