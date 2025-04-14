@@ -1,4 +1,4 @@
-#include "devoir_2.h"
+#include "../include/devoir_2.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -182,6 +182,25 @@ int CG(
     return iter + 1;
 }
 
+double get_element_csr(int i, int j, const int *rows_idx, const int *cols, const double *A) {
+    // Parcourt les colonnes de la ligne i
+    for (int idx = rows_idx[i]; idx < rows_idx[i + 1]; idx++) {
+        if (cols[idx] == j) {
+            return A[idx]; // Retourne la valeur si la colonne correspond
+        }
+    }
+    return 0.0; // Retourne 0 si l'élément est nul
+}
+
+
+int get_index_csr(int i, int j, const int *rows_idx, const int *cols) {
+    for (int idx = rows_idx[i]; idx < rows_idx[i + 1]; idx++) {
+        if (cols[idx] == j)
+            return idx;
+    }
+    return -1; 
+}
+
 /**
  * @brief Calcule la factorisation incomplète LU = LDL* d'une matrice A en format CSR.
  *
@@ -203,51 +222,39 @@ void ILU(
     const int *cols,
     const double *A,
     double *L
-) {
-    // On travaille avec A symétrique -> ILU simmilaire à IC (en modifiant ligne avec la racine du pivot)
-    
+) {    
     // Copier A dans L en format symétrique
     for (int i = 0; i < nnz; i++) {
         L[i] = A[i];
     }
-    // H = A 
+
     double Akk, Lik, Lkj;
-    int idx, colj;
+    int colj, idx;
     for (int k = 0; k < n; k++){
-        Akk = 0.0;
     
         // Cherche Akk = L[k][k]
-        for (int idx = rows_idx[k]; idx < rows_idx[k + 1]; ++idx) {
-            if (cols[idx] == k) {
-                Akk = L[idx];
-                break;
-            }
-        }
+        idx = get_index_csr(k, k, rows_idx, cols);
+        Akk = A[idx];
+
         // Si Akk == 0, on ne peut pas continuer
-        if (Akk < 1e-14) continue;
+        if (fabs(Akk) < 1e-14 || idx == -1) continue;
         
         // On divise la ligne k par Akk
-        for (int j = rows_idx[k]; j < rows_idx[k + 1]; ++j) {
-            L[j] /= Akk;
+        for (int j = k + 1; j < n; j++) {
+            // L[k][j] = L[k][j] / Akk;
+            idx = get_index_csr(k, j, rows_idx, cols);
+            L[idx] /= Akk;
 
-            colj = cols[j];
+            idx = get_index_csr(k, j, rows_idx, cols);
+            Lkj = L[idx];
 
-            for (int i = rows_idx[k]; i < rows_idx[k + 1]; ++i) {
-                // On cherche la colonne de L[i][k] et L[k][j]
-                for (idx = rows_idx[i]; idx < rows_idx[i + 1]; ++idx) {
-                    if (cols[i] == k) {
-                        Lik = L[i];
-                        break;
-                    }
-                }
-                for (idx = rows_idx[colj]; idx < rows_idx[colj + 1]; ++idx) {
-                    if (cols[i] == colj) {
-                        Lkj = L[i];
-                        break;
-                    }
-                }
+            for (int i = k + 1; i < n; i++) {
+                idx = get_index_csr(i, k, rows_idx, cols);
+                Lik = L[idx];
+
                 // On met à jour L[i][j] = L[i][j] - L[i][k] * L[k][j]
-                L[i] -= Lik * Lkj;
+                idx = get_index_csr(i, j, rows_idx, cols);
+                L[idx] -= Lik * Lkj;
             }
         }
     }

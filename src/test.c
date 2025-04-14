@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include "devoir_2.h"
+#include "../include/devoir_2.h"
+#include "../include/test.h"
 #include "time.h"
 
 
@@ -163,4 +164,33 @@ cleanup:
     free(rows);
     free(cols);
     free(val);
+}
+
+void print_csr(int n, const int *rows_idx, const int *cols, const double *values) {
+    for (int i = 0; i < n; ++i) {
+        printf("Row %d: ", i);
+        for (int idx = rows_idx[i]; idx < rows_idx[i + 1]; ++idx) {
+            printf("(%d, %.4f) ", cols[idx], values[idx]);
+        }
+        printf("\n");
+    }
+}
+
+void test_ILU(){
+    int n = 3;
+    int nnz = 7;
+    int rows_idx[] = {0, 2, 5, 7};
+    int cols[]     = {0, 1, 0, 1, 2, 1, 2};
+    double A[]     = {4, -1, -1, 4, -1, -1, 4};
+    double L[7];
+    /*
+     4  -1   0
+    -1   4  -1
+     0  -1   4
+    */
+
+    ILU(n, nnz, rows_idx, cols, A, L);
+
+    printf("ILU0 factorization (CSR format):\n");
+    print_csr(n, rows_idx, cols, L);
 }

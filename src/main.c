@@ -112,6 +112,7 @@ int main(int argc, char *argv[]) {
     free_FE_Model(model);
 
     test_cg(5, 1e-6);
+    test_ILU();
 
     return 0;
 }

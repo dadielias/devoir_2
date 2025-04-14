@@ -6,6 +6,6 @@ void dense_to_csr(const double *A, int n, int *rows, int *cols, double *val, int
 int cholesky_decomposition(double *A, int n);
 int solve_linear_system(double *A, double *b, int n);
 void test_cg(int n, double tol);
-
+void test_ILU();
 
 #endif
