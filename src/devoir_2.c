@@ -234,7 +234,7 @@ void ILU(
     
         // Cherche Akk = L[k][k]
         idx = get_index_csr(k, k, rows_idx, cols);
-        Akk = A[idx];
+        Akk = L[idx];
 
         // Si Akk == 0, on ne peut pas continuer
         if (fabs(Akk) < 1e-14 || idx == -1) continue;
