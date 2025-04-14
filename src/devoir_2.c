@@ -242,7 +242,7 @@ void ILU(
         // On divise la ligne k par Akk
         for (int j = k + 1; j < n; j++) {
             // L[k][j] = L[k][j] / Akk;
-            idx = get_index_csr(k, j, rows_idx, cols);
+            idx = get_index_csr(j, k, rows_idx, cols);
             L[idx] /= Akk;
 
             idx = get_index_csr(k, j, rows_idx, cols);
@@ -259,6 +259,8 @@ void ILU(
         }
     }
 }
+
+
 
 
 int PCG(
