@@ -166,6 +166,79 @@ cleanup:
     free(val);
 }
 
+void test_pcg( int n, double tol){
+    printf("\nTesting PCG ...\n");
+    srand(time(NULL));
+
+    // Allocation des structures
+    double *A_dense = malloc(n * n * sizeof(double));
+    double *A_chol  = malloc((n * (n + 1)) / 2 * sizeof(double));
+    double *b       = malloc(n * sizeof(double));
+    double *b_ref   = malloc(n * sizeof(double));
+    double *x_cg    = calloc(n, sizeof(double));
+    double *x_pcg   = calloc(n, sizeof(double));
+
+    // 1. Générer A SDP et b
+    generate_random_sdp_matrix(A_dense, n);
+    for (int i = 0; i < n; i++) {
+        b[i] = ((double)rand()) / RAND_MAX;
+        b_ref[i] = b[i];
+    }
+
+    // 2. Copier la matrice au format compact (triangulaire inférieure stockée en ligne)
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j <= i; j++)
+            A_chol[i * (i + 1) / 2 + j] = A_dense[i * n + j];
+
+    // 3. Résolution directe avec Cholesky (écrase b_ref avec la solution)
+    if (solve_linear_system(A_chol, b_ref, n) != 0) {
+        printf("Échec de la résolution directe\n");
+        goto cleanup;
+    }
+
+    // 4. Conversion de la matrice vers CSR
+    int *rows = malloc((n + 1) * sizeof(int));
+    int *cols = malloc(n * n * sizeof(int));       
+    double *val = malloc(n * n * sizeof(double));   
+    int nnz = 0;
+
+    dense_to_csr(A_dense, n, rows, cols, val, &nnz);
+
+    int iterations_pcg = PCG(n, nnz, rows, cols, val, b, x_pcg, tol);
+    int iterations_cg = CG(n, nnz, rows, cols, val, b, x_cg, tol);
+
+    double err = 0;
+    double err1 = 0;
+    for (int i = 0; i < n; i++) {
+        // CG vs Cholesky
+        double diff = x_cg[i] - b_ref[i];
+        err += diff * diff;
+        // PCG vs CG
+        double diff1 = x_pcg[i] - x_cg[i];
+        err1 += diff1 * diff1;
+    }
+    err = sqrt(err);
+    err1 = sqrt(err1);
+
+
+    printf("✅ Résolu en %d itérations avec CG\n", iterations_cg);
+    printf("🔍 Norme de l'erreur (CG vs Cholesky) : %.8e\n", err);
+    printf("✅ Résolu en %d itérations avec PCG\n", iterations_pcg);
+    printf("🔍 Norme de l'erreur (PCG vs CG) : %.8e\n", err1);    
+
+cleanup:
+    free(A_dense);
+    free(A_chol);
+    free(b);
+    free(b_ref);
+    free(x_cg);
+    free(rows);
+    free(cols);
+    free(val);
+}
+
+
+
 void print_csr(int n, const int *rows_idx, const int *cols, const double *values) {
     for (int i = 0; i < n; ++i) {
         printf("Row %d: ", i);

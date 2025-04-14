@@ -113,6 +113,7 @@ int main(int argc, char *argv[]) {
 
     test_cg(5, 1e-6);
     test_ILU();
+    test_pcg(5, 1e-6);
 
     return 0;
 }
