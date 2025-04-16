@@ -92,16 +92,16 @@ int main(int argc, char *argv[]) {
     SymBandMatrix *Kbd = model->K;
 
     // TODO : start
-    // CSRMatrix *Ksp = band_to_csr(Kbd); // or band_to_sym_csr(Kbd)
-    // double eps = 1.;
-    // CG(Ksp->n, Ksp->nnz, Ksp->row_ptr, Ksp->col_idx, Ksp->data, rhs, sol, eps);
-    // free_csr(Ksp);
+    CSRMatrix *Ksp = band_to_csr(Kbd); // or band_to_sym_csr(Kbd)
+    double eps = 1e-10;
+    CG(Ksp->n, Ksp->nnz, Ksp->row_ptr, Ksp->col_idx, Ksp->data, rhs, sol, eps);
+    free_csr(Ksp);
     // TODO : end
 
     // Slow direct solver without renumbering
-    sym_band_LDL(Kbd->data, Kbd->n, Kbd->k);
-    solve_sym_band(Kbd->data, Kbd->n, Kbd->k, rhs);
-    memcpy(sol, rhs, 2 * model->n_node * sizeof(double));
+    //sym_band_LDL(Kbd->data, Kbd->n, Kbd->k);
+    //solve_sym_band(Kbd->data, Kbd->n, Kbd->k, rhs);
+    //memcpy(sol, rhs, 2 * model->n_node * sizeof(double));
 
     display_sol(model, sol);
 

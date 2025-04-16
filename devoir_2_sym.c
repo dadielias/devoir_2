@@ -3,25 +3,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/*
+DEVOIR RESOLU EN SYMM
+*/
 
-void Matvec(
-    int n,
-    int nnz,
-    const int *rows_idx,
-    const int *cols,
-    const double *A,
-    const double *v,
-    double *Av
-) {
-
+/**
+ * @brief effectue le produit matrice-vecteur d'une matrice en format CSR
+ * @param n taille de la matrice
+ * @param rows_idx tableau d'index de lignes
+ * @param cols tableau d'index de colonnes
+ * @param A tableau de valeurs non nulles
+ * @param x vecteur d'entrée
+ * @param y vecteur de sortie
+ */
+static inline void spmv(int n, const int *rows_idx, const int *cols, const double *A, const double *x, double *y)
+{
     for (int i = 0; i < n; i++)
     {
         double s = 0;
         for (int j = rows_idx[i]; j < rows_idx[i + 1]; j++)
         {
-            s += A[j] * v[cols[j]];
+            s += A[j] * x[cols[j]];
         }
-        Av[i] = s;
+        y[i] = s;
     }
 }
 
@@ -36,7 +40,7 @@ void Matvec(
  */
 static inline void residual(int n, const int *rows_idx, const int *cols, const double *A, const double *x, const double *b, double *r)
 {
-    Matvec(n, 0, rows_idx, cols, A, x, r);
+    spmv(n, rows_idx, cols, A, x, r);
     for (int i = 0; i < n; i++)
     {
         r[i] = b[i] - r[i];
@@ -73,7 +77,6 @@ static inline void axpy(int n, double *x, const double *y, double a)
         x[i] += a * y[i];
     }
 }
-
 
 /**
  * Résout le système linéaire Lx = b où L est une matrice résultant d'une factorisation incomplète.
@@ -149,7 +152,7 @@ int CG(
     for (iter = 0; iter < max_iter; iter++) {
         
         // Ap = A * p
-        Matvec(n, nnz, rows_idx, cols, A, p, Ap);
+        spmv(n, rows_idx, cols, A, p, Ap);
 
         // Calcul alpha : alpha = r^T r / (p^T Ap)
         double alpha_num = r_norm2;  // PK PAS d^T r --> dot(n, r, d);
@@ -293,9 +296,12 @@ int PCG(
     // Préconditionneur
     // M = LU  = A = L D L^T
     ILU(n, nnz, rows_idx, cols, A, M);
+    for (int i = 0; i < nnz; i++) {
+        printf("%e ", M[i]);
+    }
 
     // Initialisation
-    Matvec(n, nnz, rows_idx, cols, A, x, Ap);   // Ax = A * x
+    spmv(n, rows_idx, cols, A, x, Ap);          // Ax = A * x
 
     for (int i = 0; i < n; i++) {
         r[i] = b[i] - Ap[i];                    // r = b - Ax
@@ -318,7 +324,7 @@ int PCG(
     for (iter = 0; iter < max_iter; iter++) {
         
         // Ap = A * p
-        Matvec(n, nnz, rows_idx, cols, A, p, Ap);
+        spmv(n, rows_idx, cols, A, p, Ap);
 
         // Calcul alpha : alpha = r^T z / (p^T Ap)
         double alpha_num = dot(n, r, z);
@@ -364,6 +370,5 @@ int PCG(
 }
 
 int csr_sym() {
-    return 0; //  Both parts
-    // return 1; // Lower part only
+    return 1; // Lower part only
 }
