@@ -5,6 +5,36 @@
 
 
 /**
+ * @brief effectue le produit matrice-vecteur d'une matrice symétrique en format CSR (partie inférieure uniquement)
+ * @param n taille de la matrice
+ * @param rows_idx tableau d'index de lignes
+ * @param cols tableau d'index de colonnes
+ * @param A tableau de valeurs non nulles (partie inférieure de A uniquement)
+ * @param x vecteur d'entrée
+ * @param y vecteur de sortie
+ */
+static inline void spmv_symmetric(int n, const int *rows_idx, const int *cols, const double *A, const double *x, double *y)
+{
+    for (int i = 0; i < n; i++) {
+        y[i] = 0.0;
+    }
+
+    for (int i = 0; i < n; i++) {
+        for (int k = rows_idx[i]; k < rows_idx[i + 1]; k++) {
+            int j = cols[k];
+
+            if (i == j) {
+                y[i] += A[k] * x[j]; 
+            } else {
+                y[i] += A[k] * x[j];
+                y[j] += A[k] * x[i]; 
+            }
+        }
+    }
+}
+
+
+/**
  * @brief effectue le produit matrice-vecteur d'une matrice en format CSR
  * @param n taille de la matrice
  * @param rows_idx tableau d'index de lignes
@@ -418,10 +448,9 @@ int PCG(
 
 
 /**
- * @brief Indique si la matrice est symétrique ou non.
- * @return 0 si la matrice est symétrique, 1 si elle est inférieure seulement.
+ * @brief Indique si on travaille avec toute la matrice ou seulement la partie inférieure.
+ * @return 0 si on travaille avec toute la matrice, 1 si on travaille seulement avec la partie inférieure.
  */
 int csr_sym() {
-    return 0; //  Both parts
-    // return 1; // Lower part only
+    return 0; 
 }
