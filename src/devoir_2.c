@@ -187,15 +187,6 @@ int get_index_csr(int i, int j, const int *rows_idx, const int *cols) {
 }
 
 
-void Matvec(
-    int n,
-    int nnz,
-    const int *rows_idx,
-    const int *cols,
-    const double *A,
-    const double *v,
-    double *Av
-) {}
 
 
 /**
