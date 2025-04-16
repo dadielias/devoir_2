@@ -26,6 +26,7 @@ static inline void spmv(int n, const int *rows_idx, const int *cols, const doubl
     }
 }
 
+
 /**
  * @brief calcule le résidu de l'équation Ax = b
  * @param n taille de la matrice
@@ -44,6 +45,7 @@ static inline void residual(int n, const int *rows_idx, const int *cols, const d
     }
 }
 
+
 /**
  * @brief effectue le produit scalaire de deux vecteurs de taille n
  * @param n taille des vecteurs
@@ -60,6 +62,7 @@ static inline double dot(int n, const double *x, const double *y)
     return s;
 }
 
+
 /**
  * @brief effectue l'addition de deux vecteurs avec multiplication par un scalaire
  * @param n taille des vecteurs
@@ -75,19 +78,9 @@ static inline void axpy(int n, double *x, const double *y, double a)
     }
 }
 
-void Matvec(
-    int n,
-    int nnz,
-    const int *rows_idx,
-    const int *cols,
-    const double *A,
-    const double *v,
-    double *Av
-) {}
 
 /**
- * Résout le système linéaire Lx = b où L est une matrice résultant d'une factorisation incomplète.
- *
+ * @brief Résout le système linéaire Lx = b où L est une matrice résultant d'une factorisation incomplète.
  * @param L Tableau de sortie de même taille que A, contenant la factorisation incomplète :
  *           - Si csr_sym() renvoie 0 : L contient L dans sa partie strictement inférieure
  *             et U dans sa partie supérieure.
@@ -128,6 +121,16 @@ void solve(
     }
 }
 
+
+/**
+* @brief Récupère l'élément (i, j) d'une matrice au format CSR.
+* @param i Indice de la ligne.
+* @param j Indice de la colonne.
+* @param rows_idx Tableau d'index des lignes (format CSR).
+* @param cols Tableau d'index des colonnes (format CSR).
+* @param A Tableau des valeurs non nulles de la matrice A (format CSR).
+* @return La valeur de l'élément (i, j) ou 0 si l'élément est nul.
+*/
 double get_element_csr(int i, int j, const int *rows_idx, const int *cols, const double *A) {
     // Parcourt les colonnes de la ligne i
     for (int idx = rows_idx[i]; idx < rows_idx[i + 1]; idx++) {
@@ -139,6 +142,13 @@ double get_element_csr(int i, int j, const int *rows_idx, const int *cols, const
 }
 
 
+/**
+ * @brief Récupère l'index de l'élément (i, j) d'une matrice au format CSR.
+ * @param i Indice de la ligne.
+ * @param j Indice de la colonne.
+ * @param rows_idx Tableau d'index des lignes (format CSR).
+ * @param cols Tableau d'index des colonnes (format CSR).
+*/
 int get_index_csr(int i, int j, const int *rows_idx, const int *cols) {
     for (int idx = rows_idx[i]; idx < rows_idx[i + 1]; idx++) {
         if (cols[idx] == j)
@@ -147,6 +157,29 @@ int get_index_csr(int i, int j, const int *rows_idx, const int *cols) {
     return -1; 
 }
 
+
+void Matvec(
+    int n,
+    int nnz,
+    const int *rows_idx,
+    const int *cols,
+    const double *A,
+    const double *v,
+    double *Av
+) {}
+
+
+/**
+ * @brief Résout le système linéaire Ax = b avec la méthode de conjugaison de gradient.
+ * @param n Taille de la matrice (nombre de lignes/colonnes).
+ * @param nnz Nombre de valeurs non nulles dans la matrice A.
+ * @param rows_idx Tableau d'index des lignes (format CSR).
+ * @param cols Tableau d'index des colonnes (format CSR).
+ * @param A Tableau des valeurs non nulles de la matrice A (format CSR).
+ * @param b Vecteur second membre du système linéaire.
+ * @param x Vecteur solution du système linéaire, calculé en sortie.
+ * @param eps Critère d'arrêt relatif.
+*/
 int CG(
     int n,
     int nnz,
@@ -283,8 +316,17 @@ void ILU(
 }
 
 
-
-
+/**
+ * @brief Résout le système linéaire Ax = b avec la méthode de conjugaison de gradient préconditionnée.
+ * @param n Taille de la matrice (nombre de lignes/colonnes).
+ * @param nnz Nombre de valeurs non nulles dans la matrice A.
+ * @param rows_idx Tableau d'index des lignes (format CSR).
+ * @param cols Tableau d'index des colonnes (format CSR).
+ * @param A Tableau des valeurs non nulles de la matrice A (format CSR).
+ * @param b Vecteur second membre du système linéaire.
+ * @param x Vecteur solution du système linéaire, calculé en sortie.
+ * @param eps Critère d'arrêt relatif.
+*/
 int PCG(
     int n,
     int nnz,
@@ -374,6 +416,11 @@ int PCG(
     return iter + 1;
 }
 
+
+/**
+ * @brief Indique si la matrice est symétrique ou non.
+ * @return 0 si la matrice est symétrique, 1 si elle est inférieure seulement.
+ */
 int csr_sym() {
     return 0; //  Both parts
     // return 1; // Lower part only
