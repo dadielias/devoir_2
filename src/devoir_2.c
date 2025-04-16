@@ -128,6 +128,25 @@ void solve(
     }
 }
 
+double get_element_csr(int i, int j, const int *rows_idx, const int *cols, const double *A) {
+    // Parcourt les colonnes de la ligne i
+    for (int idx = rows_idx[i]; idx < rows_idx[i + 1]; idx++) {
+        if (cols[idx] == j) {
+            return A[idx]; // Retourne la valeur si la colonne correspond
+        }
+    }
+    return 0.0; // Retourne 0 si l'élément est nul
+}
+
+
+int get_index_csr(int i, int j, const int *rows_idx, const int *cols) {
+    for (int idx = rows_idx[i]; idx < rows_idx[i + 1]; idx++) {
+        if (cols[idx] == j)
+            return idx;
+    }
+    return -1; 
+}
+
 int CG(
     int n,
     int nnz,
@@ -199,24 +218,6 @@ int CG(
     return iter + 1;
 }
 
-double get_element_csr(int i, int j, const int *rows_idx, const int *cols, const double *A) {
-    // Parcourt les colonnes de la ligne i
-    for (int idx = rows_idx[i]; idx < rows_idx[i + 1]; idx++) {
-        if (cols[idx] == j) {
-            return A[idx]; // Retourne la valeur si la colonne correspond
-        }
-    }
-    return 0.0; // Retourne 0 si l'élément est nul
-}
-
-
-int get_index_csr(int i, int j, const int *rows_idx, const int *cols) {
-    for (int idx = rows_idx[i]; idx < rows_idx[i + 1]; idx++) {
-        if (cols[idx] == j)
-            return idx;
-    }
-    return -1; 
-}
 
 /**
  * @brief Calcule la factorisation incomplète LU = LDL* d'une matrice A en format CSR.
