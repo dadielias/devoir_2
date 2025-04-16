@@ -303,14 +303,18 @@ int PCG(
     // Préconditionneur
     // M = LU  = A = L D L^T
     ILU(n, nnz, rows_idx, cols, A, M);
-    
-    // M z = r
-    solve(n, nnz, rows_idx, cols, M, b, z);
+
+    // Initialisation
+    spmv(n, rows_idx, cols, A, x, Ap);          // Ax = A * x
 
     for (int i = 0; i < n; i++) {
-        x[i] = 0.0;
-        r[i] = b[i];  // car x = 0 initialement
-        p[i] = z[i];
+        r[i] = b[i] - Ap[i];                    // r = b - Ax
+    }
+
+   solve(n, nnz, rows_idx, cols, M, b, z);      // M z = r
+
+    for (int i = 0; i < n; i++) {
+        p[i] = z[i];                            // p = z
     }
 
     int max_iter = 10000;
@@ -335,6 +339,8 @@ int PCG(
         // x = x + alpha * p
         axpy(n, x, p, alpha);
 
+        // z_(k-1)^T r_(k-1)
+        zpr_old = dot(n, r, z);
 
         // r = r - alpha * Ap
         axpy(n, r, Ap, -alpha);
@@ -347,8 +353,6 @@ int PCG(
         if (sqrt(r_norm2_new / r0_norm2) < eps) {
             break;
         }
-
-        zpr_old = dot(n, z, z);
 
         // M z = r
         solve(n, nnz, rows_idx, cols, M, r, z);
