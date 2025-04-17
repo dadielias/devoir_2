@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
     // TODO : start
     CSRMatrix *Ksp = band_to_csr(Kbd); // or band_to_sym_csr(Kbd)
     double eps = 1e-10;
-    CG(Ksp->n, Ksp->nnz, Ksp->row_ptr, Ksp->col_idx, Ksp->data, rhs, sol, eps);
+    PCG(Ksp->n, Ksp->nnz, Ksp->row_ptr, Ksp->col_idx, Ksp->data, rhs, sol, eps);
     free_csr(Ksp);
     // TODO : end
 
@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
     //solve_sym_band(Kbd->data, Kbd->n, Kbd->k, rhs);
     //memcpy(sol, rhs, 2 * model->n_node * sizeof(double));
 
-    //display_sol(model, sol);
+    display_sol(model, sol);
 
     // Free stuff
     gmshFinalize(&ierr);
@@ -111,9 +111,9 @@ int main(int argc, char *argv[]) {
     free(rhs);
     free_FE_Model(model);
 
-    test_cg(5, 1e-6);
-    test_ILU();
-    test_pcg(5, 1e-6);
+    //test_cg(5, 1e-6);
+    //test_ILU();
+    //test_pcg(5, 1e-6);
 
     return 0;
 }

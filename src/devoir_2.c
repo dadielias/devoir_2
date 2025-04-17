@@ -347,16 +347,12 @@ int PCG(
     // M = LU  = A = L D L^T
     ILU(n, nnz, rows_idx, cols, A, M);
 
+    solve(n, nnz, rows_idx, cols, M, b, z);      // M z = r = b
+
     // Initialisation
-    Matvec(n, nnz, rows_idx, cols, A, x, Ap);   // Ax = A * x
-
     for (int i = 0; i < n; i++) {
-        r[i] = b[i] - Ap[i];                    // r = b - Ax
-    }
-
-   solve(n, nnz, rows_idx, cols, M, r, z);      // M z = r
-
-    for (int i = 0; i < n; i++) {
+        x[i] = 0.0;                             // x = 0
+        r[i] = b[i];                            // r = b - Ax = b
         p[i] = z[i];                            // p = z
     }
 
