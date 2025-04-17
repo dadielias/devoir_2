@@ -107,6 +107,20 @@ static inline void axpy(int n, double *x, const double *y, double a)
     }
 }
 
+/**
+ * @brief Récupère l'index de l'élément (i, j) d'une matrice au format CSR.
+ * @param i Indice de la ligne.
+ * @param j Indice de la colonne.
+ * @param rows_idx Tableau d'index des lignes (format CSR).
+ * @param cols Tableau d'index des colonnes (format CSR).
+*/
+int get_index_csr(int i, int j, const int *rows_idx, const int *cols) {
+    for (int idx = rows_idx[i]; idx < rows_idx[i + 1]; idx++) {
+        if (cols[idx] == j)
+            return idx;
+    }
+    return -1; 
+}
 
 /**
  * @brief Résout le système linéaire Lx = b où L est une matrice résultant d'une factorisation incomplète.
@@ -146,27 +160,10 @@ void solve(
                 sum -= L[j] * x[cols[j]];
             }
         }
-        x[i] = sum / L[rows_idx[i + 1] - 1];
+        int idx = get_index_csr(i, i, rows_idx, cols);
+        x[i] = sum / L[idx];
     }
 }
-
-
-/**
- * @brief Récupère l'index de l'élément (i, j) d'une matrice au format CSR.
- * @param i Indice de la ligne.
- * @param j Indice de la colonne.
- * @param rows_idx Tableau d'index des lignes (format CSR).
- * @param cols Tableau d'index des colonnes (format CSR).
-*/
-int get_index_csr(int i, int j, const int *rows_idx, const int *cols) {
-    for (int idx = rows_idx[i]; idx < rows_idx[i + 1]; idx++) {
-        if (cols[idx] == j)
-            return idx;
-    }
-    return -1; 
-}
-
-
 
 
 /**
@@ -357,7 +354,7 @@ int PCG(
         r[i] = b[i] - Ap[i];                    // r = b - Ax
     }
 
-   solve(n, nnz, rows_idx, cols, M, b, z);      // M z = r
+   solve(n, nnz, rows_idx, cols, M, r, z);      // M z = r
 
     for (int i = 0; i < n; i++) {
         p[i] = z[i];                            // p = z
@@ -390,7 +387,6 @@ int PCG(
 
         // r = r - alpha * Ap
         axpy(n, r, Ap, -alpha);
-        //residual(n, rows_idx, cols, A, x, b, r); -> la mm a priori
 
         // r^T r
         r_norm2_new = dot(n, r, r);
@@ -416,6 +412,7 @@ int PCG(
     free(p);
     free(Ap);
     free(z);
+    free(M);
     return iter + 1;
 }
 
