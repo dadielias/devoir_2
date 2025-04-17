@@ -152,26 +152,6 @@ void solve(
 
 
 /**
-* @brief Récupère l'élément (i, j) d'une matrice au format CSR.
-* @param i Indice de la ligne.
-* @param j Indice de la colonne.
-* @param rows_idx Tableau d'index des lignes (format CSR).
-* @param cols Tableau d'index des colonnes (format CSR).
-* @param A Tableau des valeurs non nulles de la matrice A (format CSR).
-* @return La valeur de l'élément (i, j) ou 0 si l'élément est nul.
-*/
-double get_element_csr(int i, int j, const int *rows_idx, const int *cols, const double *A) {
-    // Parcourt les colonnes de la ligne i
-    for (int idx = rows_idx[i]; idx < rows_idx[i + 1]; idx++) {
-        if (cols[idx] == j) {
-            return A[idx]; // Retourne la valeur si la colonne correspond
-        }
-    }
-    return 0.0; // Retourne 0 si l'élément est nul
-}
-
-
-/**
  * @brief Récupère l'index de l'élément (i, j) d'une matrice au format CSR.
  * @param i Indice de la ligne.
  * @param j Indice de la colonne.
@@ -300,36 +280,39 @@ void ILU(
     }
 
     double Akk, Lik, Lkj;
-    int colj, idx;
-    for (int k = 0; k < n; k++){
-    
-        // Cherche Akk = L[k][k]
-        idx = get_index_csr(k, k, rows_idx, cols);
-        Akk = L[idx];
+    int kk, jk, ik, ij;
 
-        // Si Akk == 0, on ne peut pas continuer
-        if (fabs(Akk) < 1e-14 || idx == -1) continue;
+    for (int k = 0; k < n; k++) {
+        // On parcourt les colonnes k < i dans la ligne i (partie L)
+        kk = get_index_csr(k, k, rows_idx, cols);
+        if (kk == -1 || fabs(L[kk]) < 1e-14) continue;
+        double Akk = L[kk];
         
-        // On divise la ligne k par Akk
-        for (int j = k + 1; j < n; j++) {
-            // L[k][j] = L[k][j] / Akk;
-            idx = get_index_csr(j, k, rows_idx, cols);
-            if (idx == -1) continue;
-            L[idx] /= Akk;
+        for (int idx = rows_idx[k]; idx < rows_idx[k + 1]; idx++) {
+            int j = cols[idx];
+            if (k >= j) continue;
 
-            idx = get_index_csr(k, j, rows_idx, cols);
-            if (idx == -1) continue;
-            Lkj = L[idx];
 
-            for (int i = k + 1; i < n; i++) {
-                idx = get_index_csr(i, k, rows_idx, cols);
-                if (idx == -1) continue;
-                Lik = L[idx];
+            jk = get_index_csr(j, k, rows_idx, cols);
+            if (jk == -1) continue;
+            L[jk] /= Akk;
+        }
 
-                // On met à jour L[i][j] = L[i][j] - L[i][k] * L[k][j]
-                idx = get_index_csr(i, j, rows_idx, cols);
-                if (idx == -1) continue;
-                L[idx] -= Lik * Lkj;
+        for (int i = k + 1; i < n; i++) {
+            
+            ik = get_index_csr(i, k, rows_idx, cols);
+            if (ik == -1) continue;
+            Lik = L[ik];
+            
+            for (int idx = rows_idx[k]; idx < rows_idx[k + 1]; idx++) {
+                int j = cols[idx];
+                if (j <= k) continue;
+
+                Lkj = L[idx];
+
+                ij = get_index_csr(i, j, rows_idx, cols);
+                if (ij == -1) continue;
+                L[ij] -= Lik * Lkj;
             }
         }
     }
@@ -380,7 +363,7 @@ int PCG(
         p[i] = z[i];                            // p = z
     }
 
-    int max_iter = 10000;
+    int max_iter = 100000;
     int iter;
     double r_norm2 = 0.0, r_norm2_new = 0.0, r0_norm2 = 0.0, zpr_old = 0.0;
 

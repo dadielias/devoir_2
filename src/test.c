@@ -249,21 +249,74 @@ void print_csr(int n, const int *rows_idx, const int *cols, const double *values
     }
 }
 
-void test_ILU(){
-    int n = 3;
-    int nnz = 7;
-    int rows_idx[] = {0, 2, 5, 7};
-    int cols[]     = {0, 1, 0, 1, 2, 1, 2};
-    double A[]     = {4, -1, -1, 4, -1, -1, 4};
-    double L[7];
+void test_ILU() {
+    printf("Test 1: Matrice 3x3\n");
+    int n1 = 3;
+    int nnz1 = 7;
+    int rows_idx1[] = {0, 2, 5, 7};
+    int cols1[]     = {0, 1, 0, 1, 2, 1, 2};
+    double A1[]     = {4, -1, -1, 4, -1, -1, 4};
+    double L1[7];
     /*
      4  -1   0
     -1   4  -1
      0  -1   4
     */
 
-    ILU(n, nnz, rows_idx, cols, A, L);
-
+    ILU(n1, nnz1, rows_idx1, cols1, A1, L1);
     printf("ILU0 factorization (CSR format):\n");
-    print_csr(n, rows_idx, cols, L);
+    print_csr(n1, rows_idx1, cols1, L1);
+
+    printf("\nTest 2: Matrice 4x4\n");
+    int n2 = 4;
+    int nnz2 = 12;
+    int rows_idx2[] = {0, 3, 6, 9, 12};
+    int cols2[]     = {0, 1, 3, 0, 1, 2, 1, 2, 3, 0, 2, 3};
+    double A2[]     = {10, -1, 2, -1, 11, -1, -1, 10, -1, 2, -1, 10};
+    double L2[12];
+    /*
+     10  -1   0   2
+     -1  11  -1   0
+      0  -1  10  -1
+      2   0  -1  10
+    */
+
+    ILU(n2, nnz2, rows_idx2, cols2, A2, L2);
+    printf("ILU0 factorization (CSR format):\n");
+    print_csr(n2, rows_idx2, cols2, L2);
+
+    printf("\nTest 3: Matrice diagonale 3x3\n");
+    int n3 = 3;
+    int nnz3 = 3;
+    int rows_idx3[] = {0, 1, 2, 3};
+    int cols3[]     = {0, 1, 2};
+    double A3[]     = {5, 8, 3};
+    double L3[3];
+    /*
+     5   0   0
+     0   8   0
+     0   0   3
+    */
+
+    ILU(n3, nnz3, rows_idx3, cols3, A3, L3);
+    printf("ILU0 factorization (CSR format):\n");
+    print_csr(n3, rows_idx3, cols3, L3);
+
+    printf("\nTest 4: Matrice creuse 4x4\n");
+    int n4 = 4;
+    int nnz4 = 6;
+    int rows_idx4[] = {0, 2, 3, 5, 6};
+    int cols4[]     = {0, 2, 1, 0, 2, 3};
+    double A4[]     = {4, 2, 3, 2, 5, 6};
+    double L4[6];
+    /*
+     4   0   2   0
+     0   3   0   0
+     2   0   5   0
+     0   0   0   6
+    */
+
+    ILU(n4, nnz4, rows_idx4, cols4, A4, L4);
+    printf("ILU0 factorization (CSR format):\n");
+    print_csr(n4, rows_idx4, cols4, L4);
 }
