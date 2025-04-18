@@ -356,7 +356,7 @@ int PCG(
         p[i] = z[i];                            // p = z
     }
 
-    int max_iter = 100000;
+    int max_iter = 10000;
     int iter;
     double r_norm2 = 0.0, r_norm2_new = 0.0, r0_norm2 = 0.0, zpr_old = 0.0;
 

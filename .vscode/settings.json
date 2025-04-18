@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "devoir_2.h": "c"
+        "devoir_2.h": "c",
+        "analyse.h": "c"
     }
 }

@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "analyse.h"
 
 #define VERBOSE 1
 #define PRECISION 10
@@ -103,7 +104,7 @@ int main(int argc, char *argv[]) {
     //solve_sym_band(Kbd->data, Kbd->n, Kbd->k, rhs);
     //memcpy(sol, rhs, 2 * model->n_node * sizeof(double));
 
-    display_sol(model, sol);
+    //display_sol(model, sol);
 
     // Free stuff
     gmshFinalize(&ierr);
@@ -111,6 +112,13 @@ int main(int argc, char *argv[]) {
     free(rhs);
     free_FE_Model(model);
 
+    // ANALYSING
+    if (main_analyse() != 0) {
+        fprintf(stderr, "Error during analysis\n");
+        return -1;
+    }
+
+    // TESTING
     //test_cg(5, 1e-6);
     //test_ILU();
     //test_pcg(5, 1e-6);
