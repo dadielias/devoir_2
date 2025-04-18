@@ -107,20 +107,6 @@ static inline void axpy(int n, double *x, const double *y, double a)
     }
 }
 
-/**
- * @brief Récupère l'index de l'élément (i, j) d'une matrice au format CSR.
- * @param i Indice de la ligne.
- * @param j Indice de la colonne.
- * @param rows_idx Tableau d'index des lignes (format CSR).
- * @param cols Tableau d'index des colonnes (format CSR).
-*/
-int get_index_csr(int i, int j, const int *rows_idx, const int *cols) {
-    for (int idx = rows_idx[i]; idx < rows_idx[i + 1]; idx++) {
-        if (cols[idx] == j)
-            return idx;
-    }
-    return -1; 
-}
 
 /**
  * @brief Résout le système linéaire Lx = b où L est une matrice résultant d'une factorisation incomplète.
@@ -153,14 +139,18 @@ void solve(
     }
 
     // Résoudre Ux = z
+    int idx;
     for (int i = n - 1; i >= 0; i--) {
         double sum = x[i];
         for (int j = rows_idx[i]; j < rows_idx[i + 1]; j++) {
             if (cols[j] > i) {
                 sum -= L[j] * x[cols[j]];
             }
+            if (cols[j] == i) {
+                idx = j;;
+            }
         }
-        int idx = get_index_csr(i, i, rows_idx, cols);
+        //for (int x = rows_idx[i]; x < rows_idx[i + 1]; x++) if (cols[x] == i) {idx = x; break;} 
         x[i] = sum / L[idx];
     }
 }
@@ -191,18 +181,20 @@ int CG(
     double *p = malloc(n * sizeof(double));
     double *Ap = malloc(n * sizeof(double));
 
-    for (int i = 0; i < n; i++) {
-        x[i] = 0.0;
-        r[i] = b[i];  // car x = 0 initialement
-        p[i] = r[i];
-    }
+
 
     int max_iter = 10000;
     int iter;
     double r_norm2 = 0.0, r_norm2_new = 0.0, r0_norm2 = 0.0;
 
+
+    for (int i = 0; i < n; i++) {
+        x[i] = 0.0;
+        r[i] = b[i];  // car x = 0 initialement
+        p[i] = r[i];
+        r0_norm2 += r[i] * r[i];
+    }
     // Norme initiale : r0^T r0
-    r0_norm2 = dot(n, r, r);
     r_norm2 = r0_norm2;
 
     for (iter = 0; iter < max_iter; iter++) {
@@ -277,37 +269,40 @@ void ILU(
     }
 
     double Akk, Lik, Lkj;
-    int kk, jk, ik, ij;
+    int kk = -1; int jk = -1; int ik = -1; int ij = -1;
 
     for (int k = 0; k < n; k++) {
-        // On parcourt les colonnes k < i dans la ligne i (partie L)
-        kk = get_index_csr(k, k, rows_idx, cols);
+
+        // recup Akk
+        for (int x = rows_idx[k]; x < rows_idx[k + 1]; x++) if (cols[x] == k) {kk = x; break;} 
         if (kk == -1 || fabs(L[kk]) < 1e-14) continue;
-        double Akk = L[kk];
+        Akk = L[kk];
         
         for (int idx = rows_idx[k]; idx < rows_idx[k + 1]; idx++) {
             int j = cols[idx];
             if (k >= j) continue;
 
-
-            jk = get_index_csr(j, k, rows_idx, cols);
+            // recup Lkj
+            for (int x = rows_idx[j]; x < rows_idx[j + 1]; x++) if (cols[x] == k) {jk = x; break;} 
             if (jk == -1) continue;
             L[jk] /= Akk;
         }
 
         for (int i = k + 1; i < n; i++) {
             
-            ik = get_index_csr(i, k, rows_idx, cols);
+            // recup Lik
+            for (int x = rows_idx[i]; x < rows_idx[i + 1]; x++) if (cols[x] == k) {jk = x; break;} 
             if (ik == -1) continue;
             Lik = L[ik];
             
             for (int idx = rows_idx[k]; idx < rows_idx[k + 1]; idx++) {
                 int j = cols[idx];
-                if (j <= k) continue;
+                if (k >= j) continue;
 
                 Lkj = L[idx];
 
-                ij = get_index_csr(i, j, rows_idx, cols);
+                // recup Lkj
+                for (int x = rows_idx[i]; x < rows_idx[i + 1]; x++) if (cols[x] == j) {jk = x; break;} 
                 if (ij == -1) continue;
                 L[ij] -= Lik * Lkj;
             }
@@ -372,6 +367,8 @@ int PCG(
         // Calcul alpha : alpha = r^T z / (p^T Ap)
         double alpha_num = dot(n, r, z);
         double alpha_den = dot(n, p, Ap);
+
+        
 
         double alpha = alpha_num / alpha_den;
 

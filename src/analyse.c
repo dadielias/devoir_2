@@ -27,6 +27,16 @@ void create_random_sdp_matrix(double *A, int n, double sparsity) {
         }
 }
 
+void create_tridiag_sdp_matrix(double *A, int n) {
+    for (int i = 0; i < n; i++) {
+        A[i * n + i] = 2.0;
+        if (i > 0) {
+            A[i * n + (i - 1)] = -1.0;
+            A[(i - 1) * n + i] = -1.0;
+        }
+    }
+}
+
 void create_random_b(double *b, int n) {
     for (int i = 0; i < n; i++) {
         b[i] = ((double)rand()) / RAND_MAX;
@@ -51,8 +61,7 @@ void denseTOcsr(const double *A, int n, int *rows, int *cols, double *val, int *
 
 
 int PCG_CG_temp_compare() {
-    printf("Début de la comparaison taille/temps CG et PCG\n");
-
+    printf("Début de la comparaison taille/temps CG, PCG et ILU\n");
 
     FILE *file = fopen("./data/PCG_vs_CG.txt", "w");
     if (!file) {
@@ -60,16 +69,16 @@ int PCG_CG_temp_compare() {
         return -1;
     }
 
+    // Ajouter un en-tête au fichier pour plus de clarté
+    //fprintf(file, "n nnz avg_t_CG avg_iter_CG avg_t_PCG avg_iter_PCG avg_t_ILU\n");
 
     int sizes[] = {5, 10, 15, 20, 50, 75, 100, 150, 200, 500, 1000, 2000}; // Tailles des matrices
     int num_sizes = sizeof(sizes) / sizeof(sizes[0]);
     double sparsity = 0.1;
-    int nbr_iter_CG = 0;
-    int nbr_iter_PCG = 0;
 
     for (int s = 0; s < num_sizes; s++) {
         int n = sizes[s];
-        int nnz =  n * n; //(int) (sparsity * n) + 1;  // pr être sur de pas avoir de problème de division par 0
+        int nnz = n * n; // Nombre de valeurs non nulles (approximatif)
 
         // Allocation mémoire
         int *rows_idx = malloc((n + 1) * sizeof(int));
@@ -77,6 +86,7 @@ int PCG_CG_temp_compare() {
         double *A = malloc(nnz * sizeof(double));
         double *b = malloc(n * sizeof(double));
         double *x = malloc(n * sizeof(double));
+        double *L = malloc(nnz * sizeof(double)); // Pour la factorisation ILU
 
         // Génération des données
         create_random_sdp_matrix(A, n, sparsity);
@@ -86,26 +96,46 @@ int PCG_CG_temp_compare() {
         printf("\nTaille de la matrice : %d x %d\n", n, n);
         printf("Nombre de valeurs non nulles : %d\n", nnz);
 
-        // Mesure du temps pour CG
-        clock_t start = clock();
-        nbr_iter_CG = CG(n, nnz, rows_idx, cols, A, b, x, 1e-10);
-        clock_t end = clock();
-        double time_CG = (double)(end - start) / CLOCKS_PER_SEC;
+        // Variables pour les moyennes
+        double total_time_CG = 0.0, total_time_PCG = 0.0, total_time_ILU = 0.0;
+        int total_iter_CG = 0, total_iter_PCG = 0;
 
-        printf("Temps CG : %.6f secondes\n", time_CG);
-        printf("Nombre d'itérations CG : %d\n", nbr_iter_CG);
+        // Répéter 10 fois pour calculer les moyennes
+        for (int repeat = 0; repeat < 10; repeat++) {
+            // Mesure du temps pour CG
+            clock_t start = clock();
+            int iter_CG = CG(n, nnz, rows_idx, cols, A, b, x, 1e-15);
+            clock_t end = clock();
+            total_time_CG += (double)(end - start) / CLOCKS_PER_SEC;
+            total_iter_CG += iter_CG;
 
-        // Mesure du temps pour PCG
-        start = clock();
-        nbr_iter_PCG = PCG(n, nnz, rows_idx, cols, A, b, x, 1e-15);
-        end = clock();
-        double time_PCG = (double)(end - start) / CLOCKS_PER_SEC;
+            // Mesure du temps pour ILU
+            start = clock();
+            ILU(n, nnz, rows_idx, cols, A, L);
+            end = clock();
+            total_time_ILU += (double)(end - start) / CLOCKS_PER_SEC;
 
-        printf("Temps PCG : %.6f secondes\n", time_PCG);
-        printf("Nombre d'itérations PCG : %d\n\n", nbr_iter_PCG);
+            // Mesure du temps pour PCG
+            start = clock();
+            int iter_PCG = PCG(n, nnz, rows_idx, cols, A, b, x, 1e-15);
+            end = clock();
+            total_time_PCG += (double)(end - start) / CLOCKS_PER_SEC;
+            total_iter_PCG += iter_PCG;
+        }
+
+        // Calcul des moyennes
+        double avg_time_CG = total_time_CG / 10.0;
+        double avg_time_PCG = total_time_PCG / 10.0;
+        double avg_time_ILU = total_time_ILU / 10.0;
+        int avg_iter_CG = total_iter_CG / 10;
+        int avg_iter_PCG = total_iter_PCG / 10;
+
+        printf("Temps moyen CG : %.6f secondes, Itérations moyennes CG : %d\n", avg_time_CG, avg_iter_CG);
+        printf("Temps moyen ILU : %.6f secondes\n", avg_time_ILU);
+        printf("Temps moyen PCG : %.6f secondes, Itérations moyennes PCG : %d\n\n", avg_time_PCG, avg_iter_PCG);
 
         // Écriture des résultats dans le fichier
-        fprintf(file, "%d %d %.6f %d %.6f %d\n", n, nnz, time_CG, nbr_iter_CG, time_PCG, nbr_iter_PCG);
+        fprintf(file, "%d %d %.6f %d %.6f %d %.6f\n", n, nnz, avg_time_CG, avg_iter_CG, avg_time_PCG, avg_iter_PCG, avg_time_ILU);
 
         // Libération mémoire
         free(rows_idx);
@@ -113,11 +143,12 @@ int PCG_CG_temp_compare() {
         free(A);
         free(b);
         free(x);
+        free(L);
     }
 
     fclose(file);
-    printf("Résultats enregistrés dans benchmark_results.txt\n");
-    return 0;    
+    printf("Résultats enregistrés dans PCG_vs_CG.txt\n");
+    return 0;
 }
 
 

@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
     //solve_sym_band(Kbd->data, Kbd->n, Kbd->k, rhs);
     //memcpy(sol, rhs, 2 * model->n_node * sizeof(double));
 
-    //display_sol(model, sol);
+    display_sol(model, sol);
 
     // Free stuff
     gmshFinalize(&ierr);
@@ -119,9 +119,9 @@ int main(int argc, char *argv[]) {
     }
 
     // TESTING
-    //test_cg(5, 1e-6);
-    //test_ILU();
-    //test_pcg(5, 1e-6);
+    test_cg(5, 1e-6);
+    test_ILU();
+    test_pcg(5, 1e-6);
 
     return 0;
 }
