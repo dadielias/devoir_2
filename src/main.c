@@ -14,6 +14,23 @@
 #define VERBOSE 1
 #define PRECISION 10
 
+double condition_number(double *A, int n) {
+    double max_eigenvalue = 0.0;
+    double min_eigenvalue = 1e30;
+
+    // Calcul approximatif des valeurs propres par somme des éléments dans chaque ligne
+    for (int i = 0; i < n; i++) {
+        double sum = 0.0;
+        for (int j = 0; j < n; j++) {
+            sum += fabs(A[i * n + j]);
+        }
+        if (sum > max_eigenvalue) max_eigenvalue = sum;
+        if (sum < min_eigenvalue) min_eigenvalue = sum;
+    }
+
+    return max_eigenvalue / min_eigenvalue;
+}
+
 void display_sol(FE_Model *model, double *sol) {
 
     int ierr, n_views, *views;
@@ -95,7 +112,7 @@ int main(int argc, char *argv[]) {
     // TODO : start
     CSRMatrix *Ksp = band_to_csr(Kbd); // or band_to_sym_csr(Kbd)
     double eps = 1e-10;
-    PCG(Ksp->n, Ksp->nnz, Ksp->row_ptr, Ksp->col_idx, Ksp->data, rhs, sol, eps);
+    CG(Ksp->n, Ksp->nnz, Ksp->row_ptr, Ksp->col_idx, Ksp->data, rhs, sol, eps);
     free_csr(Ksp);
     // TODO : end
 
@@ -119,9 +136,10 @@ int main(int argc, char *argv[]) {
     }
 
     // TESTING
-    test_cg(5, 1e-6);
-    test_ILU();
-    test_pcg(5, 1e-6);
+    //test_cg(5, 1e-6);
+    //test_ILU();
+    //test_pcg(5, 1e-6);
+
 
     return 0;
 }
